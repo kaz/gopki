@@ -12,13 +12,18 @@ import (
 
 type (
 	Authority struct {
+		cert   *x509.Certificate
 		key    crypto.Signer
 		keyfac keyfactory.Factory
 	}
 )
 
-func New(key crypto.Signer, keyfac keyfactory.Factory) *Authority {
-	return &Authority{key, keyfac}
+func New(cert *x509.Certificate, key crypto.Signer) *Authority {
+	return &Authority{
+		cert,
+		key,
+		keyfactory.Default(),
+	}
 }
 
 func (a *Authority) GenReq(commonName string) (*x509.CertificateRequest, crypto.Signer, error) {
@@ -44,4 +49,23 @@ func (a *Authority) GenReq(commonName string) (*x509.CertificateRequest, crypto.
 	}
 
 	return req, key, nil
+}
+
+func (a *Authority) SignReq(req *x509.CertificateRequest, certType CertificateType) (*x509.Certificate, error) {
+	preCert, err := createPreCert(certType, req.Subject)
+	if err != nil {
+		return nil, fmt.Errorf("createPreCert failed: %w", err)
+	}
+
+	rawCert, err := x509.CreateCertificate(rand.Reader, preCert, a.cert, req.PublicKey, a.key)
+	if err != nil {
+		return nil, fmt.Errorf("x509.CreateCertificate failed: %w", err)
+	}
+
+	cert, err := x509.ParseCertificate(rawCert)
+	if err != nil {
+		return nil, fmt.Errorf("x509.ParseCertificate failed: %w", err)
+	}
+
+	return cert, nil
 }
