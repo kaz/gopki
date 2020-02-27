@@ -1,21 +1,22 @@
 package storage
 
 type (
-	KeyPair struct {
+	Entry struct {
 		SerialNumber string
-		FriendlyName string
-		Certificate  string
-		PrivateKey   string
+		Subject      string
+
+		Certificate []byte
+		Key         []byte
 
 		Root    bool
 		Revoked bool
 	}
 
 	Driver interface {
-		Put(*KeyPair) error
-		GetRoot() (*KeyPair, error)
-		GetRevoked() ([]*KeyPair, error)
-		GetBySerialNumber(string) (*KeyPair, error)
-		GetByFriendlyName(string) ([]*KeyPair, error)
+		Put(*Entry) error
+		GetRoot() (*Entry, error)
+		GetRevoked() ([]*Entry, error)
+		GetBySerialNumber(string) (*Entry, error)
+		GetBySubject(string) ([]*Entry, error)
 	}
 )

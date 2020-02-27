@@ -26,6 +26,22 @@ func New(cert *x509.Certificate, key crypto.Signer) *Authority {
 	}
 }
 
+func (a *Authority) BuildCA(caName string) (*x509.Certificate, crypto.Signer, error) {
+	req, key, err := a.GenReq(caName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("a.GenReq failed: %w", err)
+	}
+
+	a.key = key
+
+	cert, err := a.SignReq(req, CERT_TYPE_CA)
+	if err != nil {
+		return nil, nil, fmt.Errorf("a.SignReq failed: %w", err)
+	}
+
+	return cert, key, nil
+}
+
 func (a *Authority) GenReq(commonName string) (*x509.CertificateRequest, crypto.Signer, error) {
 	key, err := a.keyfac.NewKey()
 	if err != nil {
@@ -55,6 +71,10 @@ func (a *Authority) SignReq(req *x509.CertificateRequest, certType CertificateTy
 	preCert, err := createPreCert(certType, req.Subject)
 	if err != nil {
 		return nil, fmt.Errorf("createPreCert failed: %w", err)
+	}
+
+	if a.cert == nil {
+		a.cert = preCert // self-sign
 	}
 
 	rawCert, err := x509.CreateCertificate(rand.Reader, preCert, a.cert, req.PublicKey, a.key)

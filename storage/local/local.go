@@ -19,8 +19,8 @@ func NewDriver(path string) storage.Driver {
 	return &Driver{path}
 }
 
-func (d *Driver) get() ([]*storage.KeyPair, error) {
-	data := []*storage.KeyPair{}
+func (d *Driver) get() ([]*storage.Entry, error) {
+	data := []*storage.Entry{}
 
 	f, err := os.Open(d.path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -37,13 +37,13 @@ func (d *Driver) get() ([]*storage.KeyPair, error) {
 	return data, nil
 }
 
-func (d *Driver) Put(newEntry *storage.KeyPair) error {
+func (d *Driver) Put(newEntry *storage.Entry) error {
 	data, err := d.get()
 	if err != nil {
 		return fmt.Errorf("d.get failed: %w", err)
 	}
 
-	newData := []*storage.KeyPair{newEntry}
+	newData := []*storage.Entry{newEntry}
 	for _, entry := range data {
 		if entry.Root && newEntry.Root {
 			continue
@@ -67,7 +67,7 @@ func (d *Driver) Put(newEntry *storage.KeyPair) error {
 	return nil
 }
 
-func (d *Driver) GetRoot() (*storage.KeyPair, error) {
+func (d *Driver) GetRoot() (*storage.Entry, error) {
 	data, err := d.get()
 	if err != nil {
 		return nil, fmt.Errorf("d.get failed: %w", err)
@@ -82,13 +82,13 @@ func (d *Driver) GetRoot() (*storage.KeyPair, error) {
 	return nil, nil
 }
 
-func (d *Driver) GetRevoked() ([]*storage.KeyPair, error) {
+func (d *Driver) GetRevoked() ([]*storage.Entry, error) {
 	data, err := d.get()
 	if err != nil {
 		return nil, fmt.Errorf("d.get failed: %w", err)
 	}
 
-	entries := []*storage.KeyPair{}
+	entries := []*storage.Entry{}
 	for _, entry := range data {
 		if entry.Revoked {
 			entries = append(entries, entry)
@@ -98,7 +98,7 @@ func (d *Driver) GetRevoked() ([]*storage.KeyPair, error) {
 	return entries, nil
 }
 
-func (d *Driver) GetBySerialNumber(serialNumber string) (*storage.KeyPair, error) {
+func (d *Driver) GetBySerialNumber(serialNumber string) (*storage.Entry, error) {
 	data, err := d.get()
 	if err != nil {
 		return nil, fmt.Errorf("d.get failed: %w", err)
@@ -113,15 +113,15 @@ func (d *Driver) GetBySerialNumber(serialNumber string) (*storage.KeyPair, error
 	return nil, nil
 }
 
-func (d *Driver) GetByFriendlyName(friendlyName string) ([]*storage.KeyPair, error) {
+func (d *Driver) GetBySubject(subject string) ([]*storage.Entry, error) {
 	data, err := d.get()
 	if err != nil {
 		return nil, fmt.Errorf("d.get failed: %w", err)
 	}
 
-	entries := []*storage.KeyPair{}
+	entries := []*storage.Entry{}
 	for _, entry := range data {
-		if entry.FriendlyName == friendlyName {
+		if entry.Subject == subject {
 			entries = append(entries, entry)
 		}
 	}
