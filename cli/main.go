@@ -23,6 +23,14 @@ func main() {
 				Name:   "build-ca",
 				Action: buildCA,
 			},
+			{
+				Name:   "build-client-full",
+				Action: buildClientFull,
+			},
+			{
+				Name:   "build-server-full",
+				Action: buildServerFull,
+			},
 		},
 	}
 
@@ -40,6 +48,30 @@ func buildCA(c *cli.Context) error {
 
 	if err := action.BuildCA(commonName, driver); err != nil {
 		return fmt.Errorf("action.BuildCA failed: %w", err)
+	}
+	return nil
+}
+
+func buildClientFull(c *cli.Context) error {
+	commonName := "client"
+	if c.NArg() > 0 {
+		commonName = c.Args().First()
+	}
+
+	if err := action.BuildClientFull(commonName, driver); err != nil {
+		return fmt.Errorf("action.BuildClientFull failed: %w", err)
+	}
+	return nil
+}
+
+func buildServerFull(c *cli.Context) error {
+	commonName := "server"
+	if c.NArg() > 0 {
+		commonName = c.Args().First()
+	}
+
+	if err := action.BuildServerFull(commonName, driver); err != nil {
+		return fmt.Errorf("action.BuildServerFull failed: %w", err)
 	}
 	return nil
 }

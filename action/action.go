@@ -33,7 +33,7 @@ func BuildCA(commonName string, driver storage.Driver) error {
 
 	rawKey, err := keyfactory.Wrap(caKey).Bytes()
 	if err != nil {
-		return fmt.Errorf("codec.EncodeToBytes failed: %w", err)
+		return fmt.Errorf("keyfactory.Wrap.Bytes failed: %w", err)
 	}
 
 	err = driver.Put(&storage.Entry{
@@ -42,7 +42,64 @@ func BuildCA(commonName string, driver storage.Driver) error {
 		Certificate:  caCert.Raw,
 		Key:          rawKey,
 		Root:         true,
-		Revoked:      false,
+	})
+	if err != nil {
+		return fmt.Errorf("driver.Put failed: %w", err)
+	}
+
+	return nil
+}
+
+func BuildClientFull(commonName string, driver storage.Driver) error {
+	ca, err := launchCA(driver)
+	if err != nil {
+		return fmt.Errorf("launchCA failed: %w", err)
+	}
+
+	cert, key, err := ca.BuildClientFull(commonName)
+	if err != nil {
+		return fmt.Errorf("ca.BuildClientFull failed: %w", err)
+	}
+
+	rawKey, err := keyfactory.Wrap(key).Bytes()
+	if err != nil {
+		return fmt.Errorf("keyfactory.Wrap.Bytes failed: %w", err)
+	}
+
+	err = driver.Put(&storage.Entry{
+		SerialNumber: hex.EncodeToString(cert.SerialNumber.Bytes()),
+		Subject:      cert.Subject.String(),
+		Certificate:  cert.Raw,
+		Key:          rawKey,
+	})
+	if err != nil {
+		return fmt.Errorf("driver.Put failed: %w", err)
+	}
+
+	return nil
+}
+
+func BuildServerFull(commonName string, driver storage.Driver) error {
+	ca, err := launchCA(driver)
+	if err != nil {
+		return fmt.Errorf("launchCA failed: %w", err)
+	}
+
+	cert, key, err := ca.BuildServerFull(commonName)
+	if err != nil {
+		return fmt.Errorf("ca.BuildServerFull failed: %w", err)
+	}
+
+	rawKey, err := keyfactory.Wrap(key).Bytes()
+	if err != nil {
+		return fmt.Errorf("keyfactory.Wrap.Bytes failed: %w", err)
+	}
+
+	err = driver.Put(&storage.Entry{
+		SerialNumber: hex.EncodeToString(cert.SerialNumber.Bytes()),
+		Subject:      cert.Subject.String(),
+		Certificate:  cert.Raw,
+		Key:          rawKey,
 	})
 	if err != nil {
 		return fmt.Errorf("driver.Put failed: %w", err)
