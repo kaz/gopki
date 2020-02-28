@@ -25,6 +25,19 @@ func New(cert *x509.Certificate, key crypto.Signer) *Authority {
 		keyfactory.Default(),
 	}
 }
+func FromRaw(rawCert, rawKey []byte) (*Authority, error) {
+	cert, err := x509.ParseCertificate(rawCert)
+	if err != nil {
+		return nil, fmt.Errorf("x509.ParseCertificate failed: %w", err)
+	}
+
+	key, err := keyfactory.Parse(rawKey)
+	if err != nil {
+		return nil, fmt.Errorf("keyfactory.Parse failed: %w", err)
+	}
+
+	return New(cert, key), nil
+}
 
 func (a *Authority) build(commonName string, certType CertificateType) (*x509.Certificate, crypto.Signer, error) {
 	req, key, err := a.GenReq(commonName)

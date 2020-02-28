@@ -9,6 +9,22 @@ import (
 	"github.com/kaz/gopki/storage"
 )
 
+func launchCA(driver storage.Driver) (*authority.Authority, error) {
+	ent, err := driver.GetRoot()
+	if err != nil {
+		return nil, fmt.Errorf("driver.GetRoot failed: %w", err)
+	} else if ent == nil {
+		return nil, fmt.Errorf("no root CA: %w", err)
+	}
+
+	ca, err := authority.FromRaw(ent.Certificate, ent.Key)
+	if err != nil {
+		return nil, fmt.Errorf("authority.FromRaw failed: %w", err)
+	}
+
+	return ca, nil
+}
+
 func BuildCA(commonName string, driver storage.Driver) error {
 	caCert, caKey, err := authority.New(nil, nil).BuildCA(commonName)
 	if err != nil {
