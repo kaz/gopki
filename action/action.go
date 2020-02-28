@@ -2,6 +2,7 @@ package action
 
 import (
 	"encoding/hex"
+	"encoding/pem"
 	"fmt"
 
 	"github.com/kaz/gopki/authority"
@@ -106,4 +107,26 @@ func BuildServerFull(commonName string, driver storage.Driver) error {
 	}
 
 	return nil
+}
+
+func ShowCA(driver storage.Driver) ([]byte, error) {
+	ent, err := driver.GetRoot()
+	if err != nil {
+		return nil, fmt.Errorf("driver.GetRoot failed: %w", err)
+	}
+
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ent.Certificate}), nil
+}
+
+func ShowCert(commonName string, driver storage.Driver) ([][]byte, error) {
+	entries, err := driver.GetBySubject("CN=" + commonName)
+	if err != nil {
+		return nil, fmt.Errorf("driver.GetBySubject failed: %w", err)
+	}
+
+	certs := [][]byte{}
+	for _, ent := range entries {
+		certs = append(certs, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ent.Certificate}))
+	}
+	return certs, nil
 }

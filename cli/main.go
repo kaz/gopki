@@ -31,6 +31,14 @@ func main() {
 				Name:   "build-server-full",
 				Action: buildServerFull,
 			},
+			{
+				Name:   "show-ca",
+				Action: showCA,
+			},
+			{
+				Name:   "show-cert",
+				Action: showCert,
+			},
 		},
 	}
 
@@ -72,6 +80,33 @@ func buildServerFull(c *cli.Context) error {
 
 	if err := action.BuildServerFull(commonName, driver); err != nil {
 		return fmt.Errorf("action.BuildServerFull failed: %w", err)
+	}
+	return nil
+}
+
+func showCA(c *cli.Context) error {
+	cert, err := action.ShowCA(driver)
+	if err != nil {
+		return fmt.Errorf("action.ShowCA failed: %w", err)
+	}
+
+	fmt.Printf("%s\n", cert)
+	return nil
+}
+
+func showCert(c *cli.Context) error {
+	commonName := ""
+	if c.NArg() > 0 {
+		commonName = c.Args().First()
+	}
+
+	certs, err := action.ShowCert(commonName, driver)
+	if err != nil {
+		return fmt.Errorf("action.ShowCert failed: %w", err)
+	}
+
+	for _, cert := range certs {
+		fmt.Printf("%s\n", cert)
 	}
 	return nil
 }
