@@ -26,20 +26,26 @@ func New(cert *x509.Certificate, key crypto.Signer) *Authority {
 	}
 }
 
-func (a *Authority) BuildCA(caName string) (*x509.Certificate, crypto.Signer, error) {
-	req, key, err := a.GenReq(caName)
+func (a *Authority) build(commonName string, certType CertificateType) (*x509.Certificate, crypto.Signer, error) {
+	req, key, err := a.GenReq(commonName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("a.GenReq failed: %w", err)
 	}
 
-	a.key = key
+	if a.key == nil {
+		a.key = key // self-sign
+	}
 
-	cert, err := a.SignReq(req, CERT_TYPE_CA)
+	cert, err := a.SignReq(req, certType)
 	if err != nil {
 		return nil, nil, fmt.Errorf("a.SignReq failed: %w", err)
 	}
 
 	return cert, key, nil
+}
+
+func (a *Authority) BuildCA(commonName string) (*x509.Certificate, crypto.Signer, error) {
+	return a.build(commonName, CERT_TYPE_CA)
 }
 
 func (a *Authority) GenReq(commonName string) (*x509.CertificateRequest, crypto.Signer, error) {
@@ -88,4 +94,12 @@ func (a *Authority) SignReq(req *x509.CertificateRequest, certType CertificateTy
 	}
 
 	return cert, nil
+}
+
+func (a *Authority) BuildClientFull(commonName string) (*x509.Certificate, crypto.Signer, error) {
+	return a.build(commonName, CERT_TYPE_CLIENT)
+}
+
+func (a *Authority) BuildServerFull(commonName string) (*x509.Certificate, crypto.Signer, error) {
+	return a.build(commonName, CERT_TYPE_SERVER)
 }
