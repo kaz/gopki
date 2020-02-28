@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kaz/gopki/authority"
-	"github.com/kaz/gopki/keyfactory/codec"
+	"github.com/kaz/gopki/keyfactory"
 	"github.com/kaz/gopki/storage"
 )
 
@@ -15,7 +15,7 @@ func BuildCA(commonName string, driver storage.Driver) error {
 		return fmt.Errorf("authority.New.BuildCA failed: %w", err)
 	}
 
-	rawKey, err := codec.EncodeToBytes(caKey)
+	rawKey, err := keyfactory.Wrap(caKey).Bytes()
 	if err != nil {
 		return fmt.Errorf("codec.EncodeToBytes failed: %w", err)
 	}
