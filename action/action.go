@@ -1,4 +1,4 @@
-package main
+package action
 
 import (
 	"encoding/hex"
@@ -7,17 +7,10 @@ import (
 	"github.com/kaz/gopki/authority"
 	"github.com/kaz/gopki/keyfactory/codec"
 	"github.com/kaz/gopki/storage"
-	"github.com/kaz/gopki/storage/local"
 )
 
-func main() {
-	if err := _main(); err != nil {
-		panic(err)
-	}
-}
-
-func _main() error {
-	caCert, caKey, err := authority.New(nil, nil).BuildCA("gopki Root CA")
+func BuildCA(commonName string, driver storage.Driver) error {
+	caCert, caKey, err := authority.New(nil, nil).BuildCA(commonName)
 	if err != nil {
 		return fmt.Errorf("authority.New.BuildCA failed: %w", err)
 	}
@@ -26,8 +19,6 @@ func _main() error {
 	if err != nil {
 		return fmt.Errorf("codec.EncodeToBytes failed: %w", err)
 	}
-
-	driver := local.NewDriver("store.json")
 
 	err = driver.Put(&storage.Entry{
 		SerialNumber: hex.EncodeToString(caCert.SerialNumber.Bytes()),
