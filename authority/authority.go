@@ -18,14 +18,13 @@ type (
 	}
 )
 
-func New(cert *x509.Certificate, key crypto.Signer) *Authority {
-	return &Authority{
-		cert,
-		key,
-		keyfactory.Default(),
-	}
+func New(cert *x509.Certificate, key crypto.Signer, fac keyfactory.Factory) *Authority {
+	return &Authority{cert, key, fac}
 }
-func FromRaw(rawCert, rawKey []byte) (*Authority, error) {
+func NewEmpty(fac keyfactory.Factory) *Authority {
+	return New(nil, nil, fac)
+}
+func NewFromRaw(rawCert, rawKey []byte, fac keyfactory.Factory) (*Authority, error) {
 	cert, err := x509.ParseCertificate(rawCert)
 	if err != nil {
 		return nil, fmt.Errorf("x509.ParseCertificate failed: %w", err)
@@ -36,10 +35,10 @@ func FromRaw(rawCert, rawKey []byte) (*Authority, error) {
 		return nil, fmt.Errorf("keyfactory.Parse failed: %w", err)
 	}
 
-	return New(cert, key), nil
+	return New(cert, key, fac), nil
 }
 
-func (a *Authority) build(commonName string, certType CertificateType) (*x509.Certificate, crypto.Signer, error) {
+func (a *Authority) BuildFull(certType CertificateType, commonName string) (*x509.Certificate, crypto.Signer, error) {
 	req, key, err := a.GenReq(commonName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("a.GenReq failed: %w", err)
@@ -49,16 +48,12 @@ func (a *Authority) build(commonName string, certType CertificateType) (*x509.Ce
 		a.key = key // self-sign
 	}
 
-	cert, err := a.SignReq(req, certType)
+	cert, err := a.SignReq(certType, req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("a.SignReq failed: %w", err)
 	}
 
 	return cert, key, nil
-}
-
-func (a *Authority) BuildCA(commonName string) (*x509.Certificate, crypto.Signer, error) {
-	return a.build(commonName, CERT_TYPE_CA)
 }
 
 func (a *Authority) GenReq(commonName string) (*x509.CertificateRequest, crypto.Signer, error) {
@@ -86,7 +81,7 @@ func (a *Authority) GenReq(commonName string) (*x509.CertificateRequest, crypto.
 	return req, key, nil
 }
 
-func (a *Authority) SignReq(req *x509.CertificateRequest, certType CertificateType) (*x509.Certificate, error) {
+func (a *Authority) SignReq(certType CertificateType, req *x509.CertificateRequest) (*x509.Certificate, error) {
 	preCert, err := prepareCertificate(certType, req, a.cert)
 	if err != nil {
 		return nil, fmt.Errorf("prepareCertificate failed: %w", err)
@@ -107,12 +102,4 @@ func (a *Authority) SignReq(req *x509.CertificateRequest, certType CertificateTy
 	}
 
 	return cert, nil
-}
-
-func (a *Authority) BuildClientFull(commonName string) (*x509.Certificate, crypto.Signer, error) {
-	return a.build(commonName, CERT_TYPE_CLIENT)
-}
-
-func (a *Authority) BuildServerFull(commonName string) (*x509.Certificate, crypto.Signer, error) {
-	return a.build(commonName, CERT_TYPE_SERVER)
 }

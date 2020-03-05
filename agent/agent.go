@@ -12,23 +12,18 @@ import (
 	"github.com/kaz/gopki/storage"
 )
 
-func launchCA(driver storage.Driver) (*authority.Authority, error) {
-	ent, err := driver.GetRoot()
-	if err != nil {
-		return nil, fmt.Errorf("driver.GetRoot failed: %w", err)
-	} else if ent == nil {
-		return nil, fmt.Errorf("no root CA: %w", err)
+type (
+	Agent struct {
+		driver  storage.Driver
+		factory keyfactory.Factory
 	}
+)
 
-	ca, err := authority.FromRaw(ent.Certificate, ent.Key)
-	if err != nil {
-		return nil, fmt.Errorf("authority.FromRaw failed: %w", err)
-	}
-
-	return ca, nil
+func New(driver storage.Driver, factory keyfactory.Factory) *Agent {
+	return &Agent{driver, factory}
 }
 
-func ImportCA(rawCert []byte, rawKey []byte, driver storage.Driver) error {
+func (a *Agent) ImportCA(rawCert []byte, rawKey []byte) error {
 	certBlock, _ := pem.Decode(rawCert)
 	cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
@@ -40,25 +35,25 @@ func ImportCA(rawCert []byte, rawKey []byte, driver storage.Driver) error {
 		return fmt.Errorf("keyfactory.ParsePEM failed: %w", err)
 	}
 
-	return importCA(cert, key, driver)
+	return a.importCA(cert, key)
 }
 
-func BuildCA(commonName string, driver storage.Driver) error {
-	caCert, caKey, err := authority.New(nil, nil).BuildCA(commonName)
+func (a *Agent) BuildCA(commonName string) error {
+	caCert, caKey, err := authority.NewEmpty(a.factory).BuildFull(authority.CERT_TYPE_CA, commonName)
 	if err != nil {
 		return fmt.Errorf("authority.New.BuildCA failed: %w", err)
 	}
 
-	return importCA(caCert, caKey, driver)
+	return a.importCA(caCert, caKey)
 }
 
-func importCA(caCert *x509.Certificate, caKey crypto.Signer, driver storage.Driver) error {
+func (a *Agent) importCA(caCert *x509.Certificate, caKey crypto.Signer) error {
 	rawKey, err := keyfactory.Wrap(caKey).Bytes()
 	if err != nil {
 		return fmt.Errorf("keyfactory.Wrap.Bytes failed: %w", err)
 	}
 
-	err = driver.Put(&storage.Entry{
+	err = a.driver.Put(&storage.Entry{
 		SerialNumber: hex.EncodeToString(caCert.SerialNumber.Bytes()),
 		Subject:      caCert.Subject.String(),
 		Certificate:  caCert.Raw,
@@ -71,13 +66,20 @@ func importCA(caCert *x509.Certificate, caKey crypto.Signer, driver storage.Driv
 	return nil
 }
 
-func BuildClientFull(commonName string, driver storage.Driver) error {
-	ca, err := launchCA(driver)
+func (a *Agent) build(certType authority.CertificateType, commonName string) error {
+	ent, err := a.driver.GetRoot()
 	if err != nil {
-		return fmt.Errorf("launchCA failed: %w", err)
+		return fmt.Errorf("driver.GetRoot failed: %w", err)
+	} else if ent == nil {
+		return fmt.Errorf("no root CA: %w", err)
 	}
 
-	cert, key, err := ca.BuildClientFull(commonName)
+	ca, err := authority.NewFromRaw(ent.Certificate, ent.Key, a.factory)
+	if err != nil {
+		return fmt.Errorf("authority.FromRaw failed: %w", err)
+	}
+
+	cert, key, err := ca.BuildFull(certType, commonName)
 	if err != nil {
 		return fmt.Errorf("ca.BuildClientFull failed: %w", err)
 	}
@@ -87,7 +89,7 @@ func BuildClientFull(commonName string, driver storage.Driver) error {
 		return fmt.Errorf("keyfactory.Wrap.Bytes failed: %w", err)
 	}
 
-	err = driver.Put(&storage.Entry{
+	err = a.driver.Put(&storage.Entry{
 		SerialNumber: hex.EncodeToString(cert.SerialNumber.Bytes()),
 		Subject:      cert.Subject.String(),
 		Certificate:  cert.Raw,
@@ -100,37 +102,16 @@ func BuildClientFull(commonName string, driver storage.Driver) error {
 	return nil
 }
 
-func BuildServerFull(commonName string, driver storage.Driver) error {
-	ca, err := launchCA(driver)
-	if err != nil {
-		return fmt.Errorf("launchCA failed: %w", err)
-	}
-
-	cert, key, err := ca.BuildServerFull(commonName)
-	if err != nil {
-		return fmt.Errorf("ca.BuildServerFull failed: %w", err)
-	}
-
-	rawKey, err := keyfactory.Wrap(key).Bytes()
-	if err != nil {
-		return fmt.Errorf("keyfactory.Wrap.Bytes failed: %w", err)
-	}
-
-	err = driver.Put(&storage.Entry{
-		SerialNumber: hex.EncodeToString(cert.SerialNumber.Bytes()),
-		Subject:      cert.Subject.String(),
-		Certificate:  cert.Raw,
-		Key:          rawKey,
-	})
-	if err != nil {
-		return fmt.Errorf("driver.Put failed: %w", err)
-	}
-
-	return nil
+func (a *Agent) BuildClientFull(commonName string) error {
+	return a.build(authority.CERT_TYPE_CLIENT, commonName)
 }
 
-func ShowCA(driver storage.Driver) ([]byte, error) {
-	ent, err := driver.GetRoot()
+func (a *Agent) BuildServerFull(commonName string) error {
+	return a.build(authority.CERT_TYPE_SERVER, commonName)
+}
+
+func (a *Agent) ShowCA() ([]byte, error) {
+	ent, err := a.driver.GetRoot()
 	if err != nil {
 		return nil, fmt.Errorf("driver.GetRoot failed: %w", err)
 	}
@@ -138,8 +119,8 @@ func ShowCA(driver storage.Driver) ([]byte, error) {
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ent.Certificate}), nil
 }
 
-func ShowCert(commonName string, driver storage.Driver) ([][]byte, error) {
-	entries, err := driver.GetBySubject("CN=" + commonName)
+func (a *Agent) ShowCert(commonName string) ([][]byte, error) {
+	entries, err := a.driver.GetBySubject("CN=" + commonName)
 	if err != nil {
 		return nil, fmt.Errorf("driver.GetBySubject failed: %w", err)
 	}
