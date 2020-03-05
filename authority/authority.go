@@ -87,9 +87,9 @@ func (a *Authority) GenReq(commonName string) (*x509.CertificateRequest, crypto.
 }
 
 func (a *Authority) SignReq(req *x509.CertificateRequest, certType CertificateType) (*x509.Certificate, error) {
-	preCert, err := createPreCert(certType, req.Subject)
+	preCert, err := prepareCertificate(certType, req, a.cert)
 	if err != nil {
-		return nil, fmt.Errorf("createPreCert failed: %w", err)
+		return nil, fmt.Errorf("prepareCertificate failed: %w", err)
 	}
 
 	if a.cert == nil {
