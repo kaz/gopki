@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"crypto"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
@@ -47,10 +46,10 @@ func (a *Agent) BuildCA(commonName string) error {
 	return a.importCA(caCert, caKey)
 }
 
-func (a *Agent) importCA(caCert *x509.Certificate, caKey crypto.Signer) error {
-	rawKey, err := keyfactory.Wrap(caKey).Bytes()
+func (a *Agent) importCA(caCert *x509.Certificate, caKey *keyfactory.Key) error {
+	rawKey, err := caKey.Bytes()
 	if err != nil {
-		return fmt.Errorf("keyfactory.Wrap.Bytes failed: %w", err)
+		return fmt.Errorf("caKey.Bytes failed: %w", err)
 	}
 
 	err = a.driver.Put(&storage.Entry{
@@ -84,7 +83,7 @@ func (a *Agent) build(certType authority.CertificateType, commonName string) err
 		return fmt.Errorf("ca.BuildClientFull failed: %w", err)
 	}
 
-	rawKey, err := keyfactory.Wrap(key).Bytes()
+	rawKey, err := key.Bytes()
 	if err != nil {
 		return fmt.Errorf("keyfactory.Wrap.Bytes failed: %w", err)
 	}

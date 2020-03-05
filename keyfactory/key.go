@@ -3,12 +3,12 @@ package keyfactory
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"reflect"
 )
 
 type (
@@ -17,93 +17,52 @@ type (
 	}
 )
 
-const (
-	keyTypeEcdsa byte = iota
-	keyTypeRsa
-
-	blockTypeEcdsa = "EC PRIVATE KEY"
-	blockTypeRsa   = "RSA PRIVATE KEY"
-)
-
-func Wrap(s crypto.Signer) *Key {
-	return &Key{s}
-}
-
-func Parse(raw []byte) (crypto.Signer, error) {
-	switch raw[0] {
-	case keyTypeEcdsa:
-		key, err := x509.ParseECPrivateKey(raw[1:])
-		if err != nil {
-			return nil, fmt.Errorf("x509.ParseECPrivateKey failed: %w", err)
-		}
-		return key, nil
-	case keyTypeRsa:
-		key, err := x509.ParsePKCS1PrivateKey(raw[1:])
-		if err != nil {
-			return nil, fmt.Errorf("x509.ParsePKCS1PrivateKey failed: %w", err)
-		}
-		return key, nil
-	default:
-		return nil, fmt.Errorf("unexpected key type: %v", raw[0])
+func wrap(key interface{}) *Key {
+	switch key.(type) {
+	case *rsa.PrivateKey:
+		return &Key{key.(*rsa.PrivateKey)}
+	case *ecdsa.PrivateKey:
+		return &Key{key.(*ecdsa.PrivateKey)}
+	case ed25519.PrivateKey:
+		return &Key{key.(ed25519.PrivateKey)}
 	}
+	return nil
 }
 
-func ParsePEM(raw []byte) (crypto.Signer, error) {
+func Parse(raw []byte) (*Key, error) {
+	key, err := x509.ParsePKCS8PrivateKey(raw)
+	if err != nil {
+		return nil, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
+	}
+	return wrap(key), nil
+}
+
+func ParsePEM(raw []byte) (*Key, error) {
 	block, _ := pem.Decode(raw)
-
-	switch block.Type {
-	case blockTypeEcdsa:
-		key, err := x509.ParseECPrivateKey(block.Bytes)
-		if err != nil {
-			return nil, fmt.Errorf("x509.ParseECPrivateKey failed: %w", err)
-		}
-		return key, nil
-	case blockTypeRsa:
-		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-		if err != nil {
-			return nil, fmt.Errorf("x509.ParsePKCS1PrivateKey failed: %w", err)
-		}
-		return key, nil
-	default:
-		return nil, fmt.Errorf("unexpected key type: %v", block.Type)
+	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("x509.ParsePKCS8PrivateKey failed: %w", err)
 	}
+	return wrap(key), nil
 }
 
 func (k *Key) Bytes() ([]byte, error) {
-	if ecdsaKey, ok := k.Signer.(*ecdsa.PrivateKey); ok {
-		res, err := x509.MarshalECPrivateKey(ecdsaKey)
-		if err != nil {
-			return nil, fmt.Errorf("x509.MarshalECPrivateKey failed: %w", err)
-		}
-		return append([]byte{keyTypeEcdsa}, res...), nil
+	res, err := x509.MarshalPKCS8PrivateKey(k.Signer)
+	if err != nil {
+		return nil, fmt.Errorf("x509.MarshalPKCS8PrivateKey failed: %w", err)
 	}
-	if rsaKey, ok := k.Signer.(*rsa.PrivateKey); ok {
-		res := x509.MarshalPKCS1PrivateKey(rsaKey)
-		return append([]byte{keyTypeRsa}, res...), nil
-	}
-	return nil, fmt.Errorf("unexpected key type: %v", reflect.TypeOf(k.Signer))
+	return res, nil
 }
 
 func (k *Key) PEM(password []byte) ([]byte, error) {
-	blockType := ""
-	switch k.Signer.(type) {
-	case *ecdsa.PrivateKey:
-		blockType = blockTypeEcdsa
-	case *rsa.PrivateKey:
-		blockType = blockTypeRsa
-	default:
-		return nil, fmt.Errorf("unexpected key type: %v", reflect.TypeOf(k.Signer))
-	}
-
 	bytes, err := k.Bytes()
 	if err != nil {
 		return nil, fmt.Errorf("k.Bytes failed: %w", err)
 	}
-	bytes = bytes[1:]
 
-	block := &pem.Block{Type: blockType, Bytes: bytes}
+	block := &pem.Block{Type: "PRIVATE KEY", Bytes: bytes}
 	if password != nil {
-		encBlock, err := x509.EncryptPEMBlock(rand.Reader, blockType, bytes, password, x509.PEMCipherAES256)
+		encBlock, err := x509.EncryptPEMBlock(rand.Reader, "PRIVATE KEY", bytes, password, x509.PEMCipherAES256)
 		if err != nil {
 			return nil, fmt.Errorf("x509.EncryptPEMBlock failed: %w", err)
 		}

@@ -1,13 +1,12 @@
 package keyfactory
 
 import (
-	"crypto"
 	"crypto/elliptic"
 )
 
 type (
 	Factory interface {
-		NewKey() (crypto.Signer, error)
+		NewKey() (*Key, error)
 	}
 )
 

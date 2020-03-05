@@ -1,7 +1,6 @@
 package authority
 
 import (
-	"crypto"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -13,12 +12,12 @@ import (
 type (
 	Authority struct {
 		cert   *x509.Certificate
-		key    crypto.Signer
+		key    *keyfactory.Key
 		keyfac keyfactory.Factory
 	}
 )
 
-func New(cert *x509.Certificate, key crypto.Signer, fac keyfactory.Factory) *Authority {
+func New(cert *x509.Certificate, key *keyfactory.Key, fac keyfactory.Factory) *Authority {
 	return &Authority{cert, key, fac}
 }
 func NewEmpty(fac keyfactory.Factory) *Authority {
@@ -38,7 +37,7 @@ func NewFromRaw(rawCert, rawKey []byte, fac keyfactory.Factory) (*Authority, err
 	return New(cert, key, fac), nil
 }
 
-func (a *Authority) BuildFull(certType CertificateType, commonName string) (*x509.Certificate, crypto.Signer, error) {
+func (a *Authority) BuildFull(certType CertificateType, commonName string) (*x509.Certificate, *keyfactory.Key, error) {
 	req, key, err := a.GenReq(commonName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("a.GenReq failed: %w", err)
@@ -56,7 +55,7 @@ func (a *Authority) BuildFull(certType CertificateType, commonName string) (*x50
 	return cert, key, nil
 }
 
-func (a *Authority) GenReq(commonName string) (*x509.CertificateRequest, crypto.Signer, error) {
+func (a *Authority) GenReq(commonName string) (*x509.CertificateRequest, *keyfactory.Key, error) {
 	key, err := a.keyfac.NewKey()
 	if err != nil {
 		return nil, nil, fmt.Errorf("a.keyfac.NewKey failed: %w", err)
