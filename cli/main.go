@@ -90,7 +90,7 @@ func showCA(c *cli.Context) error {
 		return fmt.Errorf("action.ShowCA failed: %w", err)
 	}
 
-	fmt.Printf("%s\n", cert)
+	fmt.Printf("%s", cert)
 	return nil
 }
 
@@ -106,7 +106,7 @@ func showCert(c *cli.Context) error {
 	}
 
 	for _, cert := range certs {
-		fmt.Printf("%s\n", cert)
+		fmt.Printf("%s", cert)
 	}
 	return nil
 }
