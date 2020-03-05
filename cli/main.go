@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/kaz/gopki/action"
+	"github.com/kaz/gopki/agent"
 	"github.com/kaz/gopki/storage/local"
 	"github.com/urfave/cli/v2"
 )
@@ -80,8 +80,8 @@ func importCA(c *cli.Context) error {
 		return fmt.Errorf("ioutil.ReadAll failed: %w", err)
 	}
 
-	if err := action.ImportCA(cert, key, driver); err != nil {
-		return fmt.Errorf("action.ImportCA failed: %w", err)
+	if err := agent.ImportCA(cert, key, driver); err != nil {
+		return fmt.Errorf("agent.ImportCA failed: %w", err)
 	}
 	return nil
 }
@@ -92,8 +92,8 @@ func buildCA(c *cli.Context) error {
 		commonName = c.Args().First()
 	}
 
-	if err := action.BuildCA(commonName, driver); err != nil {
-		return fmt.Errorf("action.BuildCA failed: %w", err)
+	if err := agent.BuildCA(commonName, driver); err != nil {
+		return fmt.Errorf("agent.BuildCA failed: %w", err)
 	}
 	return nil
 }
@@ -104,8 +104,8 @@ func buildClientFull(c *cli.Context) error {
 		commonName = c.Args().First()
 	}
 
-	if err := action.BuildClientFull(commonName, driver); err != nil {
-		return fmt.Errorf("action.BuildClientFull failed: %w", err)
+	if err := agent.BuildClientFull(commonName, driver); err != nil {
+		return fmt.Errorf("agent.BuildClientFull failed: %w", err)
 	}
 	return nil
 }
@@ -116,16 +116,16 @@ func buildServerFull(c *cli.Context) error {
 		commonName = c.Args().First()
 	}
 
-	if err := action.BuildServerFull(commonName, driver); err != nil {
-		return fmt.Errorf("action.BuildServerFull failed: %w", err)
+	if err := agent.BuildServerFull(commonName, driver); err != nil {
+		return fmt.Errorf("agent.BuildServerFull failed: %w", err)
 	}
 	return nil
 }
 
 func showCA(c *cli.Context) error {
-	cert, err := action.ShowCA(driver)
+	cert, err := agent.ShowCA(driver)
 	if err != nil {
-		return fmt.Errorf("action.ShowCA failed: %w", err)
+		return fmt.Errorf("agent.ShowCA failed: %w", err)
 	}
 
 	fmt.Printf("%s", cert)
@@ -138,9 +138,9 @@ func showCert(c *cli.Context) error {
 		commonName = c.Args().First()
 	}
 
-	certs, err := action.ShowCert(commonName, driver)
+	certs, err := agent.ShowCert(commonName, driver)
 	if err != nil {
-		return fmt.Errorf("action.ShowCert failed: %w", err)
+		return fmt.Errorf("agent.ShowCert failed: %w", err)
 	}
 
 	for _, cert := range certs {
