@@ -20,6 +20,9 @@ type (
 const (
 	keyTypeEcdsa byte = iota
 	keyTypeRsa
+
+	blockTypeEcdsa = "EC PRIVATE KEY"
+	blockTypeRsa   = "RSA PRIVATE KEY"
 )
 
 func Wrap(s crypto.Signer) *Key {
@@ -45,6 +48,27 @@ func Parse(raw []byte) (crypto.Signer, error) {
 	}
 }
 
+func ParsePEM(raw []byte) (crypto.Signer, error) {
+	block, _ := pem.Decode(raw)
+
+	switch block.Type {
+	case blockTypeEcdsa:
+		key, err := x509.ParseECPrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("x509.ParseECPrivateKey failed: %w", err)
+		}
+		return key, nil
+	case blockTypeRsa:
+		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("x509.ParsePKCS1PrivateKey failed: %w", err)
+		}
+		return key, nil
+	default:
+		return nil, fmt.Errorf("unexpected key type: %v", block.Type)
+	}
+}
+
 func (k *Key) Bytes() ([]byte, error) {
 	if ecdsaKey, ok := k.Signer.(*ecdsa.PrivateKey); ok {
 		res, err := x509.MarshalECPrivateKey(ecdsaKey)
@@ -64,9 +88,9 @@ func (k *Key) PEM(password []byte) ([]byte, error) {
 	blockType := ""
 	switch k.Signer.(type) {
 	case *ecdsa.PrivateKey:
-		blockType = "EC PRIVATE KEY"
+		blockType = blockTypeEcdsa
 	case *rsa.PrivateKey:
-		blockType = "RSA PRIVATE KEY"
+		blockType = blockTypeRsa
 	default:
 		return nil, fmt.Errorf("unexpected key type: %v", reflect.TypeOf(k.Signer))
 	}

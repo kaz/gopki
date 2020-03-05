@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/kaz/gopki/action"
@@ -19,6 +20,10 @@ func main() {
 		Usage: "Serverless Certificate Authority",
 
 		Commands: []*cli.Command{
+			{
+				Name:   "import-ca",
+				Action: importCA,
+			},
 			{
 				Name:   "build-ca",
 				Action: buildCA,
@@ -46,6 +51,39 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(-1)
 	}
+}
+
+func importCA(c *cli.Context) error {
+	if c.NArg() != 2 {
+		return fmt.Errorf("unexpected args number: %v", c.NArg())
+	}
+
+	certFile, err := os.Open(c.Args().Get(0))
+	if err != nil {
+		return fmt.Errorf("os.Open failed: %w", err)
+	}
+	defer certFile.Close()
+
+	keyFile, err := os.Open(c.Args().Get(1))
+	if err != nil {
+		return fmt.Errorf("os.Open failed: %w", err)
+	}
+	defer keyFile.Close()
+
+	cert, err := ioutil.ReadAll(certFile)
+	if err != nil {
+		return fmt.Errorf("ioutil.ReadAll failed: %w", err)
+	}
+
+	key, err := ioutil.ReadAll(keyFile)
+	if err != nil {
+		return fmt.Errorf("ioutil.ReadAll failed: %w", err)
+	}
+
+	if err := action.ImportCA(cert, key, driver); err != nil {
+		return fmt.Errorf("action.ImportCA failed: %w", err)
+	}
+	return nil
 }
 
 func buildCA(c *cli.Context) error {

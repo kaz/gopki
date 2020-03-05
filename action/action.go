@@ -1,6 +1,8 @@
 package action
 
 import (
+	"crypto"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -26,12 +28,31 @@ func launchCA(driver storage.Driver) (*authority.Authority, error) {
 	return ca, nil
 }
 
+func ImportCA(rawCert []byte, rawKey []byte, driver storage.Driver) error {
+	certBlock, _ := pem.Decode(rawCert)
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return fmt.Errorf("x509.ParseCertificate failed: %w", err)
+	}
+
+	key, err := keyfactory.ParsePEM(rawKey)
+	if err != nil {
+		return fmt.Errorf("keyfactory.ParsePEM failed: %w", err)
+	}
+
+	return importCA(cert, key, driver)
+}
+
 func BuildCA(commonName string, driver storage.Driver) error {
 	caCert, caKey, err := authority.New(nil, nil).BuildCA(commonName)
 	if err != nil {
 		return fmt.Errorf("authority.New.BuildCA failed: %w", err)
 	}
 
+	return importCA(caCert, caKey, driver)
+}
+
+func importCA(caCert *x509.Certificate, caKey crypto.Signer, driver storage.Driver) error {
 	rawKey, err := keyfactory.Wrap(caKey).Bytes()
 	if err != nil {
 		return fmt.Errorf("keyfactory.Wrap.Bytes failed: %w", err)
@@ -47,7 +68,6 @@ func BuildCA(commonName string, driver storage.Driver) error {
 	if err != nil {
 		return fmt.Errorf("driver.Put failed: %w", err)
 	}
-
 	return nil
 }
 
